@@ -1,0 +1,214 @@
+---
+title: "REGRESSION MODELING OF REAL ESTATE DATA"
+author: "INDRESH SINGH ( 215280011)"
+date: "15/12/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# REGRESSION MODEL OF REAL ESTAE DATASET
+
+
+
+## All About Dataset 
+Name of Dataset :- Real Estate data 
+Source :- https://www.kaggle.com/dcw8161/real-estate-price-prediction/data
+Variables :- 1) X1 transaction date (Date at which home is bought)
+             2) X2 house age (age of house from when it was built)
+             3) X3 distance to the nearest MRT station
+             4) X4 number of convenience stores
+             5) X5 latitude ( represents the geographical position of property)
+             6) X6 longitude ( represents geographical position of property )
+             7) Y house price of unit area
+      
+Dimensions :- 414 × 8       
+
+
+
+```{r}
+setwd("C:\\Users\\Indresh Singh\\OneDrive\\Desktop\\Project")
+```
+
+### Reading the data as Real_df
+
+
+```{r}
+Real_df=read.csv('Real estate.csv' , header=TRUE)
+head(Real_df)
+```
+
+```{r}
+str(Real_df)
+```
+
+```{r}
+dim(Real_df)
+```
+
+```{r}
+summary(Real_df)
+```
+```{r}
+library(tidyverse)
+sum(is.na(Real_df))
+```
+our data doesnt contain any N.A. values hence it is good to define a linear regression model
+
+# model fitting 
+
+
+```{r}
+model1=lm(Y.house.price.of.unit.area~. , Real_df)
+summary(model1)
+```
+considering a level of significance to be 1% 
+It is found that No is just a observation number and also found to be insignificant for prediction of house price of unit area
+also transaction date can not be treated as predictor variable since it is not a numeric. transaction date defines time factor which we are not considering in our model. hence it should be removed from Model. 
+so we define new model after removing ${\bf No.and\ transaction\ date }$
+
+```{r}
+model2=lm(Y.house.price.of.unit.area ~ .-No -X1.transaction.date , Real_df)
+summary(model2)
+```
+ again in newly defined model ${\bf X6\ longitude}$  is ${\bf insignificant}$ hence  we will remove it from model. 
+ and define our model which will give us better results than before 
+
+```{r}
+model3=lm(Y.house.price.of.unit.area ~ .-No -X1.transaction.date-X6.longitude , Real_df)
+summary(model3)
+```
+even though after removing  ${\bf X6\ longitude}$ our R-SQUARED value havent increased significantly but we got the model with all significant predictors  
+hence we will do some dignosis of model3 using plots 
+
+### model diagnosis of model 3
+
+
+```{r}
+library(ggplot2)
+library(ggfortify)
+autoplot(model3)
+```
+
+
+from above plots it is clear that 
+1) except some earlier observations line's behovior is little non linear 
+2) From normal Q-Q plot we can conclude that normality is satisfied except extreme values 
+3) data is homoscedastic 
+4) some observations aer to be treated as liverage points 
+
+## check for multicollineary 
+
+```{r}
+library(carData)
+library(car)
+vif(model3)
+```
+since VIF ( variance inflation factor) is less than 5 for all the predictors involved we can say that ${\bf  Multicolinearity}$ is${\bf  not\ present}$ in the model 3
+
+## checking For Presence of interaction terms 
+
+we will check the prescence of interaction terms using ${\bf  Corrplot}$ 
+
+
+
+```{r}
+library(corrplot)
+corrplot(cor(Real_df),type="upper",method="circle",title="Correlation plot between variables",
+         mar=c(0.7,0.7,0.7,0.7),tl.cex = 0.6)
+```
+From above corrplot we can conclude that there is correlation bewteen following pairs of variables
+
+1)X4.number.of.convenience.stores , X3.distance.to.the.nearest.MRT.station
+2)X3.distance.to.the.nearest.MRT.station ,  X5.latitude
+3)X3.distance.to.the.nearest.MRT.station ,  X6.longitude
+4)X4.number.of.convenience.stores ,  X5.latitude
+
+
+```{r}
+cor(Real_df$X4.number.of.convenience.stores , Real_df$X3.distance.to.the.nearest.MRT.station)
+cor(Real_df$X3.distance.to.the.nearest.MRT.station , Real_df$X5.latitude)
+cor(Real_df$X3.distance.to.the.nearest.MRT.station , Real_df$X6.longitude)
+cor(Real_df$X4.number.of.convenience.stores , Real_df$X5.latitude)
+
+```
+
+
+1)cor(X4.number.of.convenience.stores , X3.distance.to.the.nearest.MRT.station) is ${\bf -0.6025191}$
+2)cor(X3.distance.to.the.nearest.MRT.station ,  X5.latitude) is  ${\bf -0.5910666}$
+3)cor(X3.distance.to.the.nearest.MRT.station ,  X6.longitude) is  ${\bf -0.8063168}$
+4)cor(X4.number.of.convenience.stores ,  X5.latitude) is   ${\bf 0.4441433}$
+
+
+
+correlation between  ${\bf X3.distance.to.the.nearest.MRT.station\ and\ X6.longitude}$ is very high but X6.longitude is not included in model so their interaction term is not added in the forthcoming model 
+Interaction terms of following terms are added in  model4
+1)X4.number.of.convenience.stores , X3.distance.to.the.nearest.MRT.station
+2)X3.distance.to.the.nearest.MRT.station ,  X5.latitude
+
+
+
+```{r}
+model4=lm(Y.house.price.of.unit.area ~ .-No -X1.transaction.date-X6.longitude + X4.number.of.convenience.stores :X3.distance.to.the.nearest.MRT.station + X3.distance.to.the.nearest.MRT.station : X5.latitude , Real_df )
+summary(model4)
+```
+model4 is model after addition of interaction terms 
+
+
+```{r}
+autoplot(model4)
+```
+#####  from liverage plot observations 271 , 345 and 229 are found to be livearage points and removing them will yeild some efficiency in the model 
+  
+  
+```{r}
+Real_df1=Real_df[-c(271 , 345 , 229),]
+dim(Real_df1)
+```
+
+##### so clearly liverage points are removed in newly stored datset Real_df1 , so we will redefine model using this dataset Real_df1
+  
+```{r}
+model5=lm(Y.house.price.of.unit.area ~ .-No -X1.transaction.date-X6.longitude + X4.number.of.convenience.stores :X3.distance.to.the.nearest.MRT.station + X3.distance.to.the.nearest.MRT.station : X5.latitude , Real_df1 )
+summary(model5)
+```
+#####  we can clearly see 5% increament in the efficeincy of model5 after removal of liverage points which indicates improvement in model 
+   
+   
+## Adding Polynomial terms in the model   
+   since X2.house.age & X3.distance.to.the.nearest.MRT.station have least p values we tested models adding higher powers of these two varible , I defined some test models and expremented with them ( all those test models are not mentioned here) and got following model with appropriate polynomial terms.
+we will define that model as Test_odel
+   
+```{r}
+Test_model=lm(Y.house.price.of.unit.area ~ .-No -X1.transaction.date-X6.longitude + X4.number.of.convenience.stores :X3.distance.to.the.nearest.MRT.station + X3.distance.to.the.nearest.MRT.station : X5.latitude+I(X2.house.age^2)+I(X3.distance.to.the.nearest.MRT.station^2), Real_df1 )
+
+summary(Test_model)
+```
+
+### analysis from plots of Test model 
+
+```{r}
+autoplot(Test_model)
+```
+
+since value of ${\bf R-Squared }$ is 71.64 % we conclude that Test_model is our  Final model
+
+
+## Final model is 
+
+ Y.house.price.of.unit.area =  -1.001e+04 -(1.019e+00)X2.house.age+(2.408e+00)X3.distance.to.the.nearest.MRT.station + ( 1.144e+00)X4.number.of.convenience.stores+(4.030e+02)X5.latitude+(1.857e-02)(X2.house.age^2)+(6.692e-07)(X3.distance.to.the.nearest.MRT.station^2)-(7.870e-04)[X3.distance.to.the.nearest.MRT.station:X4.number.of.convenience.stores]-(9.674e-02)[X3.distance.to.the.nearest.MRT.station:X5.latitude]
+
+
+## Conclusion of the final model: 
+
+1) R-Squared value of our final model is 71.64% .
+2) From the residual vs fitted graph we can see that the estimated error curve of our final model is almost converge to 0.
+3) From the QQ-Plot we can see that the our model behaves like normal except for the tail parts.
+4) Data is homoscedastic 
+
+
+
